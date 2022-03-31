@@ -1,17 +1,13 @@
-using System;
-using System.Collections.Generic;
 using static System.Math;
 using MathCalc.Auxiliaries;
 using MathCalc.Auxiliaries.Getters;
 
 namespace MathCalc
 {
-    using static Getter;
-    using static Getter1;
-    using static Getter2;
-    using static Getter3;
+    using static MainGetter;
     using static Checker;
-    using VarIds = Dictionary<char, int>;
+    using static ConstraintFuncs;
+    using VarIds = Dictionary<string, int>; //varible indexes pseudoname
     /// <summary>
     /// Class for calculation user string formulas
     /// </summary>
@@ -20,9 +16,10 @@ namespace MathCalc
     {
         //formula name of this object
         public readonly string formula;
+        public string[] Varibles { get => varibles.ToArray(); }
         //field that compare varible name and its position in the input array
         VarIds varible_ids;
-        private MathFormula(string formula, bool replaced_consts, List<char> varibles,VarIds varible_ids)
+        private MathFormula(string formula, bool replaced_consts, List<string> varibles,VarIds varible_ids)
         {
             this.varible_ids = varible_ids;
             this.formula = formula;
@@ -33,7 +30,7 @@ namespace MathCalc
         /// </summary>
         /// <param name="formula"></param>
         /// <param name="varibles"></param>
-        public MathFormula(string formula, List<char> varibles)
+        public MathFormula(string formula, List<string> varibles)
         {
             this.formula = formula;
             var var_ids = GetVaribleIds(varibles);
@@ -44,48 +41,48 @@ namespace MathCalc
         /// </summary>
         /// <param name="formula"></param>
         /// <param name="varibles"></param>
-        public MathFormula(string formula,params char[] varibles)
+        public MathFormula(string formula,params string[] varibles)
         {
-            var vars = new List<char>(varibles);
+            
+            var vars = new List<string>(varibles);
             var var_ids = GetVaribleIds(vars);
             this.formula = formula;
             Initialize(formula, false, vars,var_ids);
         }
-        void Initialize(string formula, bool replaced_consts, List<char> varibles,VarIds vids)
+        void Initialize(string formula, bool replaced_consts, List<string> varibles,VarIds vids)
         {
             string newFormula, formula_without_consts, name;
-            newFormula=ChangeFormula(formula, varibles, replaced_consts, out formula_without_consts, out name);
-            string[] next_scobes = name == null ? GetScobes(newFormula,formula_without_consts, varibles) : GetFunctionParams(formula_without_consts);
-            newFormula=RemoveScobes(newFormula, varibles);
+            List<int> scobe_constrs;
+            newFormula =ChangeFormula(formula, replaced_consts,out scobe_constrs, out formula_without_consts, out name); 
             InitFields(name, newFormula, varibles, vids);
+            string[] next_scobes = name == null ? GetScobes(formula_without_consts,scobe_constrs) : GetFunctionParams(formula_without_consts);
             for (int i = 0; i < next_scobes.Length; i++) {
                 int index = expression_indexes[i];
                 values[index].expression = new MathFormula(next_scobes[i], true, varibles, vids); 
             }
-            
-            //SetExpressionsToVaribles();
         }
-        void InitFields(string func_name,string newFormula,List<char> varibles,VarIds varible_ids)
+        void InitFields(string func_name,string newFormula,List<string> varibles,VarIds varible_ids)
         {
             func = func_name;
             this.varible_ids = varible_ids;
             values = GetNumbersAndVaribles(newFormula, varibles);
             determined_values = new double[values.Length];
             if (func_name == null&&values.Length>1)
-                operators = GetOperators(newFormula, varibles);
+                operators = GetOperators(newFormula);
             varible_indexes = GetVaribleIndexes(varibles,this);
             expression_indexes = GetExpressionIndexes(values);
-            this.varibles=new char[varible_indexes.Count];
+            this.varibles=new string[varible_indexes.Count];
             varible_indexes.Keys.CopyTo(this.varibles, 0);
         }
-        string ChangeFormula(string formula,List<char> varibles,bool replaced_consts,out string formula_without_consts,out string func_name)
+        string ChangeFormula(string formula,bool replaced_consts,out List<int> scobe_constrs,out string formula_without_consts,out string func_name)
         {
-            string newFormula = !replaced_consts ? ReplaceConstantsByNumbers(formula, varibles) : formula;
+            string newFormula = !replaced_consts ? ReplaceConstantsByNumbers(formula) : formula;
+            scobe_constrs = GetScobeConstraints(newFormula);
             formula_without_consts = newFormula;
             string fName;
-            IsFunction(newFormula, out fName,varibles);
+            IsFunction(newFormula, out fName,scobe_constrs);//get function name. If 'new formula', than 'fName' will be equals null
             func_name = fName;
-            return RemoveScobes(newFormula,varibles);
+            return ScobeModule.RemoveScobes(newFormula,scobe_constrs);
         }
         protected static void DetermineVaribles(MathFormula formula, double[] varibles)
         {
@@ -96,7 +93,7 @@ namespace MathCalc
             }
             for (int i = 0; i < formula.varibles?.Length; i++)
             {
-                char varible_name = formula.varibles[i];
+                string varible_name = formula.varibles[i];
                 int var_id = formula.varible_ids[varible_name];
                 
                 double value = varibles[var_id];
@@ -116,6 +113,7 @@ namespace MathCalc
             DetermineVaribles(this, input);
             return Calculate(this,input);
         }
+        
         protected static double Calculate(MathFormula formula,params double[] input)
         {
             var values = formula.values;

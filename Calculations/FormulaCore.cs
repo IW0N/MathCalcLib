@@ -4,6 +4,7 @@ using System.Text;
 namespace MathCalc
 {
     //Parent class of MathFormula contains the most its fields
+    [Serializable]
     public abstract class FormulaCore
     {
         //function name of this formula
@@ -15,10 +16,10 @@ namespace MathCalc
         //all operators of formula without scobes and expressions
         protected char[] operators;
         //all varibles, that use in main formula.
-        protected char[] varibles;
+        protected string[] varibles;
         //indexes of appropriate varible in the 'values' 
-        protected Dictionary<char, List<int>> varible_indexes;
-        //indexes of expressions in the 'values'
+        protected Dictionary<string, List<int>> varible_indexes;
+        //indexes of expressions of value in the 'values'
         protected int[] expression_indexes;
         public abstract double Calculate(params double[] input);
         

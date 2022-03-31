@@ -4,8 +4,7 @@ using System.Text;
 using MathCalc.Auxiliaries.Getters;
 namespace MathCalc.Auxiliaries
 {
-    using static Getter2;
-    static class Checker
+    public static class Checker
     {
         public static bool IsOperator(string formula, int index)
         {
@@ -17,12 +16,12 @@ namespace MathCalc.Auxiliaries
                 isSpecialOperator = (val == '+' || val == '-') && index - 1 > 0 &&
                 (previous_val == 'E' || previous_val == 'e') && IsNum(formula, index - 2);
             }
-            return ((val == '+' || val == '-') && !isSpecialOperator) || val == '*' || val == '/' || val == '^';
+            return  val == '*' || val == '/' || val == '^'|| ((val == '+' || val == '-') && !isSpecialOperator);
         }
         public static bool IsNum(string formula, int char_index)
         {
             char val = formula[char_index];
-            bool isJustNum = int.TryParse(val.ToString(), out _);
+            bool isJustNum = IsSimpleNumber(val);
 
             if (!isJustNum)
             {
@@ -36,7 +35,7 @@ namespace MathCalc.Auxiliaries
 
                         char previousSymb = formula[char_index - 1];
                         bool previousSymbIsE = previousSymb == 'E' || previousSymb == 'e';
-                        bool pre_previousSymbIsNum = char_index - 2 >= 0 && int.TryParse(formula[char_index - 2].ToString(), out _);
+                        bool pre_previousSymbIsNum = char_index - 2 >= 0 && IsSimpleNumber(formula[char_index-2]);
                         bool isSpecialOperator = (val == '+' || val == '-') && previousSymbIsE && pre_previousSymbIsNum;
                         return isSpecialOperator;
                     }
@@ -64,11 +63,11 @@ namespace MathCalc.Auxiliaries
             bool currentSymbIsVarible = varibles.Contains(formula[index]);
             return prevSymbIsOperator && currentSymbIsVarible && nextSymbIsOperator;
         }
-        public static bool IsFunction(string formula, out string name,List<char> varibles)
+        public static bool IsFunction(string formula, out string name,List<int> scobes=null)
         {
-            var scobes = GetScobes(formula,varibles);
+            scobes = scobes==null?ConstraintFuncs.GetScobeConstraints(formula):scobes;
             name = null;
-            if (scobes.Length != 1)
+            if (scobes.Count>2)
                 return false;
             else
             {
@@ -86,7 +85,7 @@ namespace MathCalc.Auxiliaries
             return false;
         }
         public static bool IsFunction(string formula, List<char> varibles) =>
-            IsFunction(formula, out _,varibles);
+            IsFunction(formula, out _);
         //Determines, that formula is only one expreesion or scobe
         public static bool ScobeHasOneExpr(string formula, List<int> scobe_cosntraints)
         {
@@ -97,10 +96,33 @@ namespace MathCalc.Auxiliaries
         }
         public static bool Continue(int i, int delta, int i_fin) =>
             delta > 0 ? i <= i_fin : i >= i_fin;
-        public static bool HasOperator(string formula)=> 
-            Getter1.GetSmallestRank(formula) > - 1;
         
-        
-        
+        public static bool IsLetter(string formula, int index,ref bool reading_value)
+        {
+            char c = formula[index];
+            bool is_number = IsNum(formula,index),is_scobe=c=='('||c==')';
+            bool is_letter = !IsOperator(formula,index)&&!is_number&&!is_scobe;
+            bool is_special_e;
+            if (index < formula.Length - 1 && index > 0)
+            {
+                char prev_val = formula[index - 1];
+                char next_val = formula[index + 1];
+                is_special_e = (c == 'E' || c == 'e') && IsSimpleNumber(prev_val) && (next_val == '+' || next_val == '-');
+                is_letter = is_letter && !is_special_e;
+            }
+            if (!is_letter)
+                is_letter = is_letter || (is_number && reading_value);
+            else
+                reading_value = true;
+            return is_letter && c != '.' && c != ',' && c != MathSpace.expression_name;
+        }
+        public static bool IsLetter(string formula,int index)
+        {
+            bool a=false; return IsLetter(formula, index,ref a);
+        }
+        public static bool IsSimpleNumber(char c)
+            => byte.TryParse(c.ToString(), out _);
+
+
     }
 }

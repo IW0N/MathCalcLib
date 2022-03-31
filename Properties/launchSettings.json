@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Профиль 1": {
+      "commandName": "Project"
+    },
+    "Профиль 2": {
+      "commandName": "Executable",
+      "executablePath": "D:\\nikit\\Documents\\Apps\\Programming\\vs_projs\\MathCalc\\MathCalcTest\\bin\\Release\\net6.0\\MathCalcTest.exe"
+    }
+  }
+}
